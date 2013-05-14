@@ -97,8 +97,17 @@
     // A JSON object is received, represented as a NSDictionary.
     // use it to pick your custom key
     
-    // Or, simply print it completely:
-    NSLog(@"We Got: %@", userInfo);
+    // For demo reasons, we simply read the "alert" key, from the "aps" dictionary:
+    NSString *alertValue = [userInfo valueForKeyPath:@"aps.alert"];
+    
+    
+    UIAlertView *alert = [[UIAlertView alloc]
+                          initWithTitle: @"Custom Dialog, while Program is active"
+                          message: alertValue
+                          delegate: nil
+                          cancelButtonTitle:@"OK"
+                          otherButtonTitles:nil];
+    [alert show];
 }
 
 
