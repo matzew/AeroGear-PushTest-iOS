@@ -7,4 +7,7 @@ Run before opening the project:
 
 	pod install
 
+
+Afterwards open the ```PushTest.xcworkspace``` file to start the application...
+
 Have fun!
