@@ -1,46 +1,119 @@
-//
-//  AGAppDelegate.m
-//  PushTest
-//
-//  Created by Matthias Wessendorf on 5/14/13.
-//  Copyright (c) 2013 Red Hat. All rights reserved.
-//
+/*
+ * JBoss, Home of Professional Open Source.
+ * Copyright Red Hat, Inc., and individual contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #import "AGAppDelegate.h"
+#import "AeroGearPush.h"
 
-@implementation AGAppDelegate
+@implementation AGAppDelegate {
+    
+}
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    // Override point for customization after application launch.
+    
+    // Let the device know we want to receive push notifications
+    [[UIApplication sharedApplication] registerForRemoteNotificationTypes:
+     (UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeSound | UIRemoteNotificationTypeAlert)];
+    
+    UIAlertView *alert = [[UIAlertView alloc]
+                          initWithTitle: @"AeroGear Push Tutorial"
+                          message: @"We hope you enjoy receving Push messages!"
+                          delegate: nil
+                          cancelButtonTitle:@"OK"
+                          otherButtonTitles:nil];
+    [alert show];
+    
+    
     return YES;
 }
-							
-- (void)applicationWillResignActive:(UIApplication *)application
-{
-    // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-    // Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
+
+// Here we need to register this "Mobile Variant Instance"
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+    
+    // currently, we need a little helper:
+    NSString *pushToken = [self convertToNSString:deviceToken];
+    
+    // we init our "Registration helper:
+    AGDeviceRegistration *registration =
+    
+        // WARNING: make sure, you start JBoss with the -b 0.0.0.0 option, to bind on all interfaces
+        // from the iPhone, you can NOT use localhost :)
+        [[AGDeviceRegistration alloc] initWithServerURL:[NSURL URLWithString:@"http://192.168.0.102:8080/ag-push/"]];
+    
+    [registration registerWithClientInfo:^(id<AGClientDeviceInformation> clientInfo) {
+        
+        // Use the Mobile Variant ID, from your register iOS Variant
+        //
+        // This ID was received when performing the HTTP-based registration
+        // with the PushEE server:
+        [clientInfo setMobileVariantID:@"402880e63ea239b9013ea23be9dc0004"];
+        
+        
+        // apply the token, to identify THIS device
+        [clientInfo setToken:pushToken];
+
+        // set some more infos, that may be useful:
+        [clientInfo setDeviceType:@"iPhone"];
+        [clientInfo setOperatingSystem:@"iOS"];
+        
+        
+    } success:^(id responseObject) {
+        //
+    } failure:^(NSError *error) {
+        // did receive an HTTP error from the PushEE server ???
+        // Let's log it for now:
+        NSLog(@"PushEE registration Error: %@", error);
+    }];
+    
+    
+    
 }
 
-- (void)applicationDidEnterBackground:(UIApplication *)application
-{
-    // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later. 
-    // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+// There was an error with connecting to APNs or receiving an APNs generated token for this phone!
+- (void)application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error {
+   
+    // something went wrong, while talking to APNs
+    // Let's simply log it for now...:
+    NSLog(@"APNs Error: %@", error);
 }
 
-- (void)applicationWillEnterForeground:(UIApplication *)application
-{
-    // Called as part of the transition from the background to the inactive state; here you can undo many of the changes made on entering the background.
+// When the program is active, this callback receives the Payload of the Push Notification message
+- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo {
+
+    // A JSON object is received, represented as a NSDictionary.
+    // use it to pick your custom key
+    
+    // Or, simply print it completely:
+    NSLog(@"We Got: %@", userInfo);
 }
 
-- (void)applicationDidBecomeActive:(UIApplication *)application
-{
-    // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+
+
+// little helper to transform the NSData-based token into a (useful) String:
+-(NSString *) convertToNSString:(NSData *) deviceToken {
+    
+    NSString *tokenStr = [deviceToken description];
+    NSString *pushToken = [[[tokenStr
+                            stringByReplacingOccurrencesOfString:@"<" withString:@""]
+                            stringByReplacingOccurrencesOfString:@">" withString:@""]
+                            stringByReplacingOccurrencesOfString:@" " withString:@""];
+    return pushToken;
+    
 }
 
-- (void)applicationWillTerminate:(UIApplication *)application
-{
-    // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
-}
 
 @end
